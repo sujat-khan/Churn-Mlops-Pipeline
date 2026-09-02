@@ -1,0 +1,76 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # JOB 1: Continuous Integration (Lint & Test)
+  # ==========================================
+  ci-pipeline:
+    name: Test & Validate Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Verify Model & Scaler Artifacts
+        run: |
+          python -c "import pickle; pickle.load(open('models/model.pkl', 'rb')); pickle.load(open('models/scaler.pkl', 'rb'))"
+          echo "Model and scaler loaded successfully!"
+
+      - name: Test FastAPI App Health
+        run: |
+          python -c "from src.app import app; print('FastAPI app imported successfully!')"
+
+      - name: Run Tests
+        run: |
+          pytest tests/test_api.py -v
+
+  # ==========================================
+  # JOB 2: Continuous Delivery (Build & Push Docker)
+  # ==========================================
+  cd-pipeline:
+    name: Build & Push Docker Image
+    needs: ci-pipeline
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/churn-prediction-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/churn-prediction-api:${{ github.sha }}
