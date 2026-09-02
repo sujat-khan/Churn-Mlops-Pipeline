@@ -1,4 +1,6 @@
 [core]
-    remote = mylocal
+    remote = origin
 ['remote "mylocal"']
     url = C:\Users\sujat\AppData\Local\Temp\dvc_remote
+['remote "origin"']
+    url = https://dagshub.com/sujat-khan/Churn-Mlops-Pipeline.dvc
