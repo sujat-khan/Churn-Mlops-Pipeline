@@ -7,7 +7,7 @@ feature_engineering:
 
 model_building:
   n_estimators: 100
-  max_depth: 7
+  max_depth: 6
   min_samples_split: 5
   min_samples_leaf: 4
   random_state: 42
