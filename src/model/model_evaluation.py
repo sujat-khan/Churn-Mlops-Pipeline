@@ -172,13 +172,20 @@ def main(
             mlflow.log_metrics(model_metrics)
             mlflow.log_artifact(metrics_path)
 
-            # 5. Log Model Artifact & Register Model
-            # (Step 2: Programmatic Registration)
+            # 5. Log Model Artifact
             mlflow.sklearn.log_model(
                 sk_model=trained_model,
-                artifact_path="model",
-                registered_model_name=None  # Registers model in DagsHub Registry
+                artifact_path="model"
             )
+
+            # 6. Save experiment info for the register_model stage
+            experiment_info = {
+                'run_id': run.info.run_id,
+                'model_path': 'model'
+            }
+            with open('reports/experiment_info.json', 'w') as f:
+                json.dump(experiment_info, f, indent=4)
+            mlflow.log_artifact('reports/experiment_info.json')
 
             logger.info('Model evaluation & MLflow logging completed successfully.')
 
