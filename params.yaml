@@ -1,0 +1,13 @@
+# params.yaml
+data_ingestion:
+  test_size: 0.30
+
+feature_engineering:
+  max_features: 4000
+
+model_building:
+  n_estimators: 100
+  max_depth: 7
+  min_samples_split: 5
+  min_samples_leaf: 4
+  random_state: 42
