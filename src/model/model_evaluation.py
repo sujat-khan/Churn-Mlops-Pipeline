@@ -11,6 +11,20 @@ from sklearn.metrics import (
     roc_auc_score,
     classification_report,
 )
+from dotenv import load_dotenv
+load_dotenv()
+
+repo_owner=os.getenv("MLFLOW_TRACKING_USERNAME")
+repo_name=os.getenv("repo_name")
+repo_uri=f"https://dagshub.com/{repo_owner}/{repo_name}.mlflow" 
+
+# Initializes DagsHub remote tracking automatically
+dagshub.init(
+    repo_owner=repo_owner,
+    repo_name=repo_name,
+    mlflow=True
+)
+mlflow.set_tracking_uri(repo_uri)
 
 # Logging configuration
 logger = logging.getLogger('model_evaluation')
@@ -109,45 +123,44 @@ def save_metrics(metrics: dict, output_path: str = 'reports/metrics.json') -> No
         raise
 
 
-def evaluate(
-    model_path: str = 'models/model.pkl',
+
+
+def main(model_path: str = 'models/model.pkl',
     test_path: str = 'data/processed/test_features.csv',
     metrics_path: str = 'reports/metrics.json',
-    target_col: str = 'Attrition',
-) -> None:
-    """Execute complete model evaluation pipeline."""
-    try:
-        logger.info('Starting model evaluation pipeline...')
+    target_col: str = 'Attrition'):
 
-        # 1. Load model and test dataset
-        model = load_model(model_path)
-        test_df = load_data(test_path)
-
-        if target_col not in test_df.columns:
-            raise KeyError(f'Target column "{target_col}" not found in {test_path}')
-
-        X_test = test_df.drop(columns=[target_col])
-        y_test = test_df[target_col]
-
-        # 2. Evaluate model performance
-        metrics = evaluate_model(model, X_test, y_test)
-
-        # 3. Save metrics artifact
-        save_metrics(metrics, output_path=metrics_path)
-
-        logger.info('Model evaluation pipeline completed successfully.')
-    except Exception as e:
-        logger.error('Model evaluation pipeline failed: %s', e)
-        raise
-
-
-def main():
-    evaluate(
-        model_path='models/model.pkl',
-        test_path='data/processed/test_features.csv',
-        metrics_path='reports/metrics.json',
-        target_col='Attrition',
-    )
+    mlflow.set_experiment('churn-prediction-experiment')
+    with mlflow.start_run() as run:
+        try:
+            # Load the trained model artifact from disk.
+            trained_model = load_model(model_path)
+            
+            # Load the processed test dataset used for final evaluation.
+            test_data = load_data(test_path)
+            
+            # Define the target column (e.g., 'Attrition') to separate features and label.
+            if target_col not in test_data.columns:
+                raise KeyError(f'Target column "{target_col}" not found in the test dataset.')
+            
+            X_test = test_data.drop(columns=[target_col])
+            y_test = test_data[target_col]
+            
+            # Evaluate the model's performance using the test set.
+            model_metrics = evaluate_model(trained_model, X_test, y_test)
+            
+            #persist the computed metrics into a JSON file.
+            save_metrics(model_metrics, output_path=metrics_path)
+            
+            # Log the final computed metrics as parameters to the current MLflow run.
+            mlflow.log_params(model_metrics)
+            
+            logger.info('Model evaluation process has been completed successfully.')
+            
+        except Exception as e:
+            logger.error('Failed to complete the model evaluation process: %s', e)
+            print(f"Error: {e}")
+            raise
 
 
 if __name__ == '__main__':
