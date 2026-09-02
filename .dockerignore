@@ -1,0 +1,44 @@
+# Git & Version control
+.git
+.gitignore
+
+# DVC directories and cache
+.dvc
+.dvcignore
+
+# Virtual environments
+venv/
+myvenv/
+env/
+.env
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and databases
+*.log
+errors.log
+*.db
+mlflow.db
+mlruns/
+
+# Large local raw/interim datasets (only processed reference is copied)
+data/raw/
+data/interim/
+data/external/
+
+# Jupyter Notebooks & documentation
+notebooks/
+docs/
+references/
+.ipynb_checkpoints/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
