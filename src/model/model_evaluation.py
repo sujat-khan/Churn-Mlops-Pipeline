@@ -15,7 +15,11 @@ import mlflow
 import mlflow.sklearn
 import dagshub
 from dotenv import load_dotenv
+import yaml
 load_dotenv()
+
+
+
 # Set up DagsHub credentials for MLflow tracking
 dagshub_token = os.getenv("DAGSHUB_PAT")
 if not dagshub_token:
@@ -126,44 +130,60 @@ def save_metrics(metrics: dict, output_path: str = 'reports/metrics.json') -> No
         logger.error('Error saving metrics to %s: %s', output_path, e)
         raise
 
+def load_params(params_path: str = 'params.yaml') -> dict:
+    """Load hyperparameters from params.yaml."""
+    with open(params_path, 'r') as file:
+        return yaml.safe_load(file)
 
 
 
-def main(model_path: str = 'models/model.pkl',
+def main(
+    model_path: str = 'models/model.pkl',
     test_path: str = 'data/processed/test_features.csv',
     metrics_path: str = 'reports/metrics.json',
-    target_col: str = 'Attrition'):
-
+    params_path: str = 'params.yaml',
+    target_col: str = 'Attrition'
+):
     mlflow.set_experiment('churn-prediction-experiment')
-    with mlflow.start_run() as run:
+
+    with mlflow.start_run(run_name="rf_experiment_run") as run:
         try:
-            # Load the trained model artifact from disk.
+            # 1. Load parameters from params.yaml and log them
+            params = load_params(params_path)
+            model_params = params.get('model_building', {})
+            mlflow.log_params(model_params)
+            logger.info('Logged parameters to MLflow: %s', model_params)
+
+            # 2. Load model and test dataset
             trained_model = load_model(model_path)
-            
-            # Load the processed test dataset used for final evaluation.
             test_data = load_data(test_path)
-            
-            # Define the target column (e.g., 'Attrition') to separate features and label.
+
             if target_col not in test_data.columns:
-                raise KeyError(f'Target column "{target_col}" not found in the test dataset.')
-            
+                raise KeyError(f'Target column "{target_col}" not found in test dataset.')
+
             X_test = test_data.drop(columns=[target_col])
             y_test = test_data[target_col]
-            
-            # Evaluate the model's performance using the test set.
+
+            # 3. Evaluate model performance
             model_metrics = evaluate_model(trained_model, X_test, y_test)
-            
-            #persist the computed metrics into a JSON file.
+
+            # 4. Save local JSON report and log metrics to MLflow
             save_metrics(model_metrics, output_path=metrics_path)
-            
-            # Log the final computed metrics as parameters to the current MLflow run.
-            mlflow.log_params(model_metrics)
-            
-            logger.info('Model evaluation process has been completed successfully.')
-            
+            mlflow.log_metrics(model_metrics)
+            mlflow.log_artifact(metrics_path)
+
+            # 5. Log Model Artifact & Register Model
+            # (Step 2: Programmatic Registration)
+            mlflow.sklearn.log_model(
+                sk_model=trained_model,
+                artifact_path="model",
+                registered_model_name=None  # Registers model in DagsHub Registry
+            )
+
+            logger.info('Model evaluation & MLflow logging completed successfully.')
+
         except Exception as e:
-            logger.error('Failed to complete the model evaluation process: %s', e)
-            print(f"Error: {e}")
+            logger.error('Failed to complete model evaluation: %s', e)
             raise
 
 
