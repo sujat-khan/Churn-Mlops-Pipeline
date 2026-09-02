@@ -1,0 +1,4 @@
+[core]
+    remote = mylocal
+['remote "mylocal"']
+    url = C:\Users\sujat\AppData\Local\Temp\dvc_remote
