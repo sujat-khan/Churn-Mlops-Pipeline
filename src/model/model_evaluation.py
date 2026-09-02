@@ -11,20 +11,20 @@ from sklearn.metrics import (
     roc_auc_score,
     classification_report,
 )
-from dotenv import load_dotenv
-load_dotenv()
+import mlflow
+import mlflow.sklearn
+import dagshub
 
-repo_owner=os.getenv("MLFLOW_TRACKING_USERNAME")
-repo_name=os.getenv("repo_name")
-repo_uri=f"https://dagshub.com/{repo_owner}/{repo_name}.mlflow" 
+# Configure DagsHub remote tracking
+dags_repo_owner = os.getenv("repo_owner")
+dags_repo_name = os.getenv("repo_name")
 
-# Initializes DagsHub remote tracking automatically
-dagshub.init(
-    repo_owner=repo_owner,
-    repo_name=repo_name,
-    mlflow=True
-)
-mlflow.set_tracking_uri(repo_uri)
+if dags_repo_owner and dags_repo_name:
+    repo_uri = f"https://dagshub.com/{dags_repo_owner}/{dags_repo_name}.mlflow"
+    mlflow.set_tracking_uri(repo_uri)
+    print(f"MLflow tracking URI set to DagsHub: {repo_uri}")
+else:
+    print("DagsHub repository info missing. Using local MLflow tracking only.")
 
 # Logging configuration
 logger = logging.getLogger('model_evaluation')
