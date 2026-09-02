@@ -15,16 +15,20 @@ import mlflow
 import mlflow.sklearn
 import dagshub
 
-# Configure DagsHub remote tracking
-dags_repo_owner = os.getenv("repo_owner")
-dags_repo_name = os.getenv("repo_name")
+# Set up DagsHub credentials for MLflow tracking, to be used when Dagshub token is used and save in github repo env
+dagshub_token = os.getenv("DAGSHUB_PAT")
+if not dagshub_token:
+    raise EnvironmentError("DAGSHUB_PAT environment variable is not set")
 
-if dags_repo_owner and dags_repo_name:
-    repo_uri = f"https://dagshub.com/{dags_repo_owner}/{dags_repo_name}.mlflow"
-    mlflow.set_tracking_uri(repo_uri)
-    print(f"MLflow tracking URI set to DagsHub: {repo_uri}")
-else:
-    print("DagsHub repository info missing. Using local MLflow tracking only.")
+os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
+os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+
+dagshub_url = "https://dagshub.com"
+repo_owner = "sujat-khan"
+repo_name = "Churn-Mlops-Pipeline"
+
+# Set up MLflow tracking URI
+mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
 
 # Logging configuration
 logger = logging.getLogger('model_evaluation')
