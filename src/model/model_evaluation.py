@@ -14,12 +14,12 @@ from sklearn.metrics import (
 import mlflow
 import mlflow.sklearn
 import dagshub
+from dotenv import load_dotenv
 
-# Set up DagsHub credentials for MLflow tracking, to be used when Dagshub token is used and save in github repo env
+# Set up DagsHub credentials for MLflow tracking
 dagshub_token = os.getenv("DAGSHUB_PAT")
 if not dagshub_token:
     raise EnvironmentError("DAGSHUB_PAT environment variable is not set")
-
 os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
 os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
 
