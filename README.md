@@ -1,6 +1,6 @@
 # Employee Churn Prediction — End-to-End MLOps Pipeline
 
-An end-to-end, production-ready MLOps project that predicts employee churn (attrition) using machine learning. This repository demonstrates modern MLOps practices: pipeline orchestration with DVC, experiment tracking & model registry on DagsHub (MLflow), REST API serving with FastAPI, containerization with Docker, and automated testing & deployment using GitHub Actions CI/CD.
+An end-to-end, production-ready MLOps project that predicts employee churn (attrition) using machine learning. This repository demonstrates modern MLOps practices: pipeline orchestration with DVC and Apache Airflow, experiment tracking & model registry on DagsHub (MLflow), REST API serving with FastAPI, containerization with Docker, and automated testing & deployment using GitHub Actions CI/CD.
 
 ---
 
@@ -14,6 +14,7 @@ An end-to-end, production-ready MLOps project that predicts employee churn (attr
   - [4. Model Training](#4-model-training-srcmodelmodel_buildingpy)
   - [5. Model Evaluation & MLflow Tracking](#5-model-evaluation--mlflow-tracking-srcmodelmodel_evaluationpy)
   - [6. Automated Model Registration](#6-automated-model-registration-srcmodelregister_modelpy)
+- [Workflow Orchestration with Apache Airflow](#workflow-orchestration-with-apache-airflow)
 - [FastAPI Model Serving (src/app.py)](#fastapi-model-serving-srcapppy)
 - [Docker Containerization](#docker-containerization)
 - [CI/CD Pipeline with GitHub Actions](#cicd-pipeline-with-github-actions)
@@ -26,7 +27,7 @@ An end-to-end, production-ready MLOps project that predicts employee churn (attr
 
 ```mermaid
 flowchart LR
-    A[Raw Data CSV] --> B[DVC Pipeline<br/>dvc repro]
+    A[Raw Data CSV] --> B[DVC / Airflow Pipeline]
     B --> C[MLflow Remote Tracking<br/>DagsHub URI]
     C --> D[Model Registry<br/>Stage: Staging]
     B --> E[FastAPI App<br/>src/app.py]
@@ -42,6 +43,7 @@ flowchart LR
 | Domain | Tool / Framework | Purpose |
 | :--- | :--- | :--- |
 | **Pipeline & Versioning** | DVC | Orchestrates pipeline stages and versions data & models |
+| **Workflow Orchestration**| Apache Airflow | Scheduled retraining DAG with CeleryExecutor & PostgreSQL |
 | **Experiment Tracking** | MLflow + DagsHub | Logs hyperparameters, metrics, and models to remote cloud |
 | **Model Registry** | DagsHub Model Registry | Tracks model versions and automates Staging stage transitions |
 | **Machine Learning** | Scikit-Learn, Pandas, NumPy | Data processing, feature engineering, and Random Forest classifier |
@@ -100,6 +102,25 @@ dvc repro
   * Reads the `run_id` from `reports/experiment_info.json`.
   * Registers the model in the MLflow Model Registry under the name **`RandomForestChurnModel`**.
   * Automatically transitions the latest registered model version to the **`Staging`** stage and archives older staging versions.
+
+---
+
+## Workflow Orchestration with Apache Airflow
+
+The project includes an Apache Airflow DAG (`dags/churn_training_dag.py`) for scheduled automated retraining running on a multi-container CeleryExecutor cluster (`docker-compose-airflow.yml`).
+
+### Running the Airflow Cluster:
+```powershell
+# 1. Start Airflow services
+docker compose -f docker-compose-airflow.yml up -d
+
+# 2. Access Web UI at http://localhost:8080 (User: airflow, Password: airflow)
+
+# 3. Stop Airflow services
+docker compose -f docker-compose-airflow.yml down
+```
+
+For detailed architecture and execution notes, see `airflow_execute.md`.
 
 ---
 
@@ -246,6 +267,8 @@ Churn-mlops-pipeline/
 ├── .github/
 │   └── workflows/
 │       └── ci_cd.yml            # GitHub Actions CI/CD configuration
+├── dags/
+│   └── churn_training_dag.py    # Apache Airflow scheduled retraining DAG
 ├── data/
 │   ├── raw/                     # Raw and train/test split datasets
 │   ├── interim/                 # Cleaned and encoded intermediate data
@@ -272,9 +295,11 @@ Churn-mlops-pipeline/
 │   └── test_api.py              # Automated Pytest suite for FastAPI
 ├── .dockerignore
 ├── .gitignore
-├── Dockerfile                   # Docker build definition
+├── Dockerfile                   # Docker build definition for FastAPI API
+├── docker-compose-airflow.yml   # Multi-container Airflow cluster setup
 ├── dvc.lock                     # DVC pipeline state lockfile
 ├── dvc.yaml                     # DVC multi-stage pipeline definition
+├── airflow_execute.md           # Airflow execution and reference guide
 ├── params.yaml                  # Centralized pipeline hyperparameters
 ├── requirements.txt             # Project dependencies
 └── README.md                    # Project documentation
