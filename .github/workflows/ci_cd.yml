@@ -41,7 +41,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          pytest tests/test_api.py -v
+          python -m pytest tests/ -v
 
   # ==========================================
   # JOB 2: Continuous Delivery (Build & Push Docker)
