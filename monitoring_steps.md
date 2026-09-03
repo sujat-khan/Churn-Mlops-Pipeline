@@ -143,6 +143,25 @@ python src/monitoring/drift_detection.py
 
 ---
 
+### Step 6: Stopping Monitoring Containers & Cleanup
+When you are done testing:
+
+#### Stop Prometheus & Grafana Containers:
+```powershell
+docker compose -f docker-compose-monitoring.yml down
+```
+
+#### Stop FastAPI Server:
+In the terminal running `uvicorn`, press `Ctrl + C`.
+
+> [!TIP]
+> **To clean up both Airflow and Monitoring stacks simultaneously:**
+> ```powershell
+> docker compose -f docker-compose-airflow.yml down; docker compose -f docker-compose-monitoring.yml down
+> ```
+
+---
+
 ## 4. How Drift Triggers Automated Retraining in Airflow
 
 ```
