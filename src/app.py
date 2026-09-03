@@ -62,6 +62,13 @@ def predict(data: Union[Dict[str, Any], List[Dict[str, Any]]]):
         log_df["timestamp"] = datetime.utcnow().isoformat()
 
         file_exists = os.path.exists(LOG_FILE)
+        if file_exists:
+            existing_header = pd.read_csv(LOG_FILE, nrows=0).columns.tolist()
+            # Ensure all columns in header exist in log_df
+            for col in existing_header:
+                if col not in log_df.columns:
+                    log_df[col] = None
+            log_df = log_df[existing_header]
         log_df.to_csv(LOG_FILE, mode='a', header=not file_exists, index=False)
 
         return {

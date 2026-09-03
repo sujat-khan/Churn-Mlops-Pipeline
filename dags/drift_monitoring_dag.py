@@ -1,8 +1,15 @@
+import sys
+import os
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.empty import EmptyOperator
+
+# Ensure Airflow Celery workers can import from /opt/airflow
+AIRFLOW_HOME = os.getenv('AIRFLOW_HOME', '/opt/airflow')
+if AIRFLOW_HOME not in sys.path:
+    sys.path.insert(0, AIRFLOW_HOME)
 
 from src.monitoring.drift_detection import run_drift_analysis
 

@@ -66,11 +66,18 @@ def audit_feature_drift(ref_df: pd.DataFrame, cur_df: pd.DataFrame, feature_cols
         cur_s = cur_df[col].dropna()
 
         if pd.api.types.is_numeric_dtype(ref_s):
+            # Coerce both series to numeric, dropping non-numeric values
+            ref_s = pd.to_numeric(ref_s, errors='coerce').dropna()
+            cur_s = pd.to_numeric(cur_s, errors='coerce').dropna()
+
+            if len(cur_s) < 5 or len(ref_s) < 5:
+                continue
+
             # 1. Kolmogorov-Smirnov 2-sample test
             ks_stat, p_val = stats.ks_2samp(ref_s, cur_s)
             psi = calculate_numeric_psi(ref_s.values, cur_s.values)
-            norm_factor = max(ref_s.std(), 1e-5)
-            wasserstein_dist = stats.wasserstein_distance(ref_s, cur_s) / norm_factor
+            norm_factor = max(float(ref_s.std()), 1e-5)
+            wasserstein_dist = float(stats.wasserstein_distance(ref_s, cur_s)) / norm_factor
 
             # Statistical decision rule:
             # For small samples (<15), avoid false alarms
@@ -91,6 +98,8 @@ def audit_feature_drift(ref_df: pd.DataFrame, cur_df: pd.DataFrame, feature_cols
             }
         else:
             # 2. Categorical distribution divergence (PSI)
+            ref_s = ref_s.astype(str)
+            cur_s = cur_s.astype(str)
             psi = calculate_categorical_psi(ref_s, cur_s)
             is_drifted = bool(psi > 0.25 and sample_size >= 15)
 
@@ -261,6 +270,13 @@ def generate_html_report(results: dict, output_path: str):
         f.write(html)
 
 
+def get_absolute_path(path: str) -> str:
+    if os.path.isabs(path):
+        return path
+    base_dir = os.getenv("AIRFLOW_HOME", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+    return os.path.join(base_dir, path)
+
+
 def run_drift_analysis(
     reference_path: str = "data/raw/train.csv",
     current_path: str = "data/monitoring/production_inferences.csv",
@@ -268,23 +284,28 @@ def run_drift_analysis(
     test_results_path: str = "reports/monitoring/drift_summary.json"
 ) -> bool:
     """Main drift detection entrypoint called by Airflow or CLI."""
-    if not os.path.exists(current_path):
-        print(f"No inference log found at {current_path}. Run some predictions first.")
+    ref_file = get_absolute_path(reference_path)
+    cur_file = get_absolute_path(current_path)
+    html_file = get_absolute_path(html_report_path)
+    json_file = get_absolute_path(test_results_path)
+
+    if not os.path.exists(cur_file):
+        print(f"No inference log found at {cur_file}. Run some predictions first.")
         return True
 
-    ref_df = pd.read_csv(reference_path)
+    ref_df = pd.read_csv(ref_file)
     try:
-        cur_df = pd.read_csv(current_path, on_bad_lines='skip')
+        cur_df = pd.read_csv(cur_file, on_bad_lines='skip')
     except Exception:
-        cur_df = pd.read_csv(current_path)
+        cur_df = pd.read_csv(cur_file)
 
     # Exclude metadata columns
     ignore_cols = ["Attrition", "prediction", "probability", "timestamp"]
     feature_cols = [c for c in ref_df.columns if c in cur_df.columns and c not in ignore_cols]
 
     print(f"Auditing drift across {len(feature_cols)} features on {len(cur_df)} production records...")
-    os.makedirs(os.path.dirname(html_report_path), exist_ok=True)
-    os.makedirs(os.path.dirname(test_results_path), exist_ok=True)
+    os.makedirs(os.path.dirname(html_file), exist_ok=True)
+    os.makedirs(os.path.dirname(json_file), exist_ok=True)
 
     # 1. Feature Drift Analysis
     feature_results = audit_feature_drift(ref_df, cur_df, feature_cols)
@@ -306,14 +327,14 @@ def run_drift_analysis(
     }
 
     # Save outputs
-    with open(test_results_path, "w") as f:
+    with open(json_file, "w") as f:
         json.dump(results_payload, f, indent=4)
 
-    generate_html_report(results_payload, html_report_path)
+    generate_html_report(results_payload, html_file)
 
     print(f"Audit complete: Drift Detected = {not overall_passed} ({feature_results['drifted_features']} drifted features)")
-    print(f"  -> JSON Summary: {test_results_path}")
-    print(f"  -> HTML Dashboard: {html_report_path}")
+    print(f"  -> JSON Summary: {json_file}")
+    print(f"  -> HTML Dashboard: {html_file}")
 
     return overall_passed
 
