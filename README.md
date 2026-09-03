@@ -15,6 +15,11 @@ An end-to-end, production-ready MLOps project that predicts employee churn (attr
   - [5. Model Evaluation & MLflow Tracking](#5-model-evaluation--mlflow-tracking-srcmodelmodel_evaluationpy)
   - [6. Automated Model Registration](#6-automated-model-registration-srcmodelregister_modelpy)
 - [Workflow Orchestration with Apache Airflow](#workflow-orchestration-with-apache-airflow)
+  - [Automated Retraining DAG](#1-automated-retraining-pipeline-dagschurn_training_dagpy)
+  - [Drift Detection & Branching DAG](#2-drift-monitoring--automated-trigger-dagsdrift_monitoring_dagpy)
+- [Production Monitoring & Drift Detection](#production-monitoring--drift-detection)
+  - [Pillar 1: Operational Monitoring (Prometheus + Grafana)](#pillar-1-operational-monitoring-prometheus--grafana)
+  - [Pillar 2: Native Statistical Drift Engine (SciPy)](#pillar-2-native-statistical-drift-engine-scipy)
 - [FastAPI Model Serving (src/app.py)](#fastapi-model-serving-srcapppy)
 - [Docker Containerization](#docker-containerization)
 - [CI/CD Pipeline with GitHub Actions](#cicd-pipeline-with-github-actions)
@@ -26,14 +31,27 @@ An end-to-end, production-ready MLOps project that predicts employee churn (attr
 ## Architecture & System Flow
 
 ```mermaid
-flowchart LR
-    A[Raw Data CSV] --> B[DVC / Airflow Pipeline]
-    B --> C[MLflow Remote Tracking<br/>DagsHub URI]
-    C --> D[Model Registry<br/>Stage: Staging]
-    B --> E[FastAPI App<br/>src/app.py]
-    E --> F[Docker Container<br/>shuman24/churn-prediction-api]
-    F --> G[GitHub Actions CI/CD]
-    G --> H[Docker Hub Registry]
+flowchart TD
+    subgraph Data & Training Pipeline
+        A[Raw CSV Data] --> B[DVC Pipeline<br/>dvc repro]
+        B --> C[MLflow Remote Tracking<br/>DagsHub URI]
+        C --> D[Model Registry<br/>Stage: Staging]
+    end
+
+    subgraph Production Serving & Monitoring
+        D --> E[FastAPI Serving<br/>src/app.py]
+        E -->|Inference Logs| F[(production_inferences.csv)]
+        E -->|/metrics| G[Prometheus Server<br/>Port 9090]
+        G --> H[Grafana Dashboard<br/>Port 3000]
+    end
+
+    subgraph Closed-Loop Retraining
+        F --> I[Airflow Drift Audit DAG<br/>drift_monitoring_dag.py]
+        I -->|KS-Test & PSI Engine| J{Drift Detected?}
+        J -->|No Drift| K[No Action<br/>Status: OK]
+        J -->|Drift Detected| L[Trigger Retraining DAG<br/>churn_training_dag.py]
+        L --> B
+    end
 ```
 
 ---
@@ -43,13 +61,15 @@ flowchart LR
 | Domain | Tool / Framework | Purpose |
 | :--- | :--- | :--- |
 | **Pipeline & Versioning** | DVC | Orchestrates pipeline stages and versions data & models |
-| **Workflow Orchestration**| Apache Airflow | Scheduled retraining DAG with CeleryExecutor & PostgreSQL |
+| **Workflow Orchestration**| Apache Airflow | Scheduled retraining & drift-triggered execution with CeleryExecutor |
 | **Experiment Tracking** | MLflow + DagsHub | Logs hyperparameters, metrics, and models to remote cloud |
 | **Model Registry** | DagsHub Model Registry | Tracks model versions and automates Staging stage transitions |
-| **Machine Learning** | Scikit-Learn, Pandas, NumPy | Data processing, feature engineering, and Random Forest classifier |
+| **Operational Monitoring**| Prometheus & Grafana | Real-time API latency (p95), throughput, and HTTP status dashboards |
+| **Data Drift Engine** | SciPy, NumPy, Pandas | Kolmogorov-Smirnov test, PSI, and prediction divergence auditing |
+| **Machine Learning** | Scikit-Learn | Data processing, feature engineering, and Random Forest classifier |
 | **API Serving** | FastAPI, Uvicorn | High-performance REST API for real-time and batch predictions |
 | **Testing** | Pytest, HTTPX | Automated API and data pipeline test suite |
-| **Containerization** | Docker | Multi-platform container runtime for repeatable deployments |
+| **Containerization** | Docker, Docker Compose | Multi-container runtime for Airflow, Prometheus, and Grafana |
 | **CI/CD Automation** | GitHub Actions | Automated linting, test execution, Docker build, and push |
 
 ---
@@ -107,20 +127,58 @@ dvc repro
 
 ## Workflow Orchestration with Apache Airflow
 
-The project includes an Apache Airflow DAG (`dags/churn_training_dag.py`) for scheduled automated retraining running on a multi-container CeleryExecutor cluster (`docker-compose-airflow.yml`).
+The project orchestrates continuous training and drift remediation via Apache Airflow running a multi-container **CeleryExecutor** cluster (`docker-compose-airflow.yml`).
 
-### Running the Airflow Cluster:
+### 1. Automated Retraining Pipeline (`dags/churn_training_dag.py`)
+* **DAG ID:** `employee_churn_training_pipeline`
+* **Flow:** `data_ingestion` $\rightarrow$ `data_preprocessing` $\rightarrow$ `feature_engineering` $\rightarrow$ `model_training` $\rightarrow$ `model_evaluation` $\rightarrow$ `model_registration`
+* **Schedule:** Weekly (`0 2 * * 1`) or dynamically triggered by drift alerts.
+
+### 2. Drift Monitoring & Automated Trigger (`dags/drift_monitoring_dag.py`)
+* **DAG ID:** `model_drift_monitoring_dag`
+* **Flow:** `audit_data_drift` (BranchPythonOperator) $\rightarrow$ `[trigger_retraining, no_drift_detected]`
+* **How it works:** Executes `src/monitoring/drift_detection.py` on a daily schedule (`@daily`). If data or prediction drift is detected, it automatically fires `TriggerDagRunOperator` to retrain the model.
+
 ```powershell
-# 1. Start Airflow services
+# 1. Start Airflow cluster
 docker compose -f docker-compose-airflow.yml up -d
 
 # 2. Access Web UI at http://localhost:8080 (User: airflow, Password: airflow)
 
-# 3. Stop Airflow services
+# 3. Stop Airflow cluster
 docker compose -f docker-compose-airflow.yml down
 ```
+For complete Airflow execution details, see [airflow_execute.md](airflow_execute.md).
 
-For detailed architecture and execution notes, see `airflow_execute.md`.
+---
+
+## Production Monitoring & Drift Detection
+
+Production machine learning requires monitoring both **system health** and **statistical model validity**:
+
+### Pillar 1: Operational Monitoring (Prometheus + Grafana)
+* **FastAPI Instrumentation:** Collects real-time latency, request volume, error rates, and endpoint statistics via Prometheus middleware (`GET /metrics`).
+* **Prometheus Server (Port `9090`):** Pull-based time-series scraper defined in `monitoring/prometheus.yml`.
+* **Grafana Dashboard (Port `3000`):** Pre-built visualization dashboard (`monitoring/fastapi_dashboard.json`) showing p95 latency, RPS throughput, and HTTP status codes.
+
+```powershell
+# Start Prometheus & Grafana stack
+docker compose -f docker-compose-monitoring.yml up -d
+```
+
+### Pillar 2: Native Statistical Drift Engine (SciPy)
+Built with **zero heavy external dependencies** directly in `src/monitoring/drift_detection.py`:
+1. **Numerical Feature Drift:** Evaluates distributions with the **Two-Sample Kolmogorov-Smirnov (KS) Test** (`scipy.stats.ks_2samp`) and **Normalized Wasserstein Distance**.
+2. **Categorical Feature Drift:** Measures bucket shift using **Population Stability Index (PSI)**.
+3. **Prediction Output Drift:** Flags when live production churn rate deviates by $>15\%$ from baseline training churn.
+4. **Interactive Reports:** Automatically generates `reports/monitoring/drift_report.html` and `reports/monitoring/drift_summary.json`.
+
+```powershell
+# Generate test traffic and run drift audit
+python simulate_traffic.py
+python src/monitoring/drift_detection.py
+```
+For complete monitoring steps and setup instructions, see [monitoring_steps.md](monitoring_steps.md).
 
 ---
 
@@ -263,44 +321,57 @@ Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to test prediction
 
 ```
 Churn-mlops-pipeline/
-├── .dvc/                        # DVC internal configuration
+├── .dvc/                            # DVC internal configuration & remote storage links
 ├── .github/
 │   └── workflows/
-│       └── ci_cd.yml            # GitHub Actions CI/CD configuration
+│       └── ci_cd.yml                # GitHub Actions CI/CD configuration
 ├── dags/
-│   └── churn_training_dag.py    # Apache Airflow scheduled retraining DAG
+│   ├── churn_training_dag.py        # Airflow automated retraining pipeline DAG
+│   └── drift_monitoring_dag.py      # Airflow scheduled drift audit & branching DAG
 ├── data/
-│   ├── raw/                     # Raw and train/test split datasets
-│   ├── interim/                 # Cleaned and encoded intermediate data
-│   └── processed/               # Scaled feature datasets for training
+│   ├── raw/                         # Raw and train/test split datasets
+│   ├── interim/                     # Cleaned and encoded intermediate data
+│   ├── processed/                   # Scaled feature datasets for training
+│   └── monitoring/                  # Live production inference audit log
 ├── models/
-│   ├── model.pkl                # Trained RandomForest model artifact
-│   └── scaler.pkl               # Fitted StandardScaler artifact
+│   ├── model.pkl                    # Trained RandomForest model artifact
+│   └── scaler.pkl                   # Fitted StandardScaler artifact
+├── monitoring/
+│   ├── prometheus.yml               # Prometheus scraping configuration
+│   └── fastapi_dashboard.json       # Pre-built Grafana monitoring dashboard
 ├── reports/
-│   ├── metrics.json             # Evaluation metrics output
-│   └── experiment_info.json     # Active MLflow run_id and artifact path
+│   ├── metrics.json                 # Evaluation metrics output
+│   ├── experiment_info.json         # Active MLflow run_id and artifact path
+│   └── monitoring/
+│       ├── drift_report.html        # Interactive HTML data drift dashboard
+│       └── drift_summary.json       # Programmatic drift pass/fail summary
 ├── src/
 │   ├── __init__.py
-│   ├── app.py                   # FastAPI application & prediction logic
+│   ├── app.py                       # FastAPI application & Prometheus instrumentation
 │   ├── data/
-│   │   ├── data_ingestion.py    # Raw data loading & stratified split
-│   │   └── data_preprocessing.py# Cleaning, log transforms, & encoding
+│   │   ├── data_ingestion.py        # Raw data loading & stratified split
+│   │   └── data_preprocessing.py    # Cleaning, log transforms, & encoding
 │   ├── features/
-│   │   └── feature_engineering.py# Domain ratios & feature standardization
-│   └── model/
-│       ├── model_building.py    # Model training & serialization
-│       ├── model_evaluation.py  # Metrics calculation & MLflow tracking
-│       └── register_model.py    # MLflow Model Registry stage promoter
+│   │   └── feature_engineering.py   # Domain ratios & feature standardization
+│   ├── model/
+│   │   ├── model_building.py        # Model training & serialization
+│   │   ├── model_evaluation.py      # Metrics calculation & MLflow tracking
+│   │   └── register_model.py        # MLflow Model Registry stage promoter
+│   └── monitoring/
+│       └── drift_detection.py       # Native SciPy statistical drift engine
 ├── tests/
-│   └── test_api.py              # Automated Pytest suite for FastAPI
+│   └── test_api.py                  # Automated Pytest suite for FastAPI
 ├── .dockerignore
 ├── .gitignore
-├── Dockerfile                   # Docker build definition for FastAPI API
-├── docker-compose-airflow.yml   # Multi-container Airflow cluster setup
-├── dvc.lock                     # DVC pipeline state lockfile
-├── dvc.yaml                     # DVC multi-stage pipeline definition
-├── airflow_execute.md           # Airflow execution and reference guide
-├── params.yaml                  # Centralized pipeline hyperparameters
-├── requirements.txt             # Project dependencies
-└── README.md                    # Project documentation
+├── Dockerfile                       # Docker build definition for FastAPI API
+├── docker-compose-airflow.yml       # Multi-container Airflow CeleryExecutor stack
+├── docker-compose-monitoring.yml    # Prometheus & Grafana monitoring stack
+├── dvc.lock                         # DVC pipeline state lockfile
+├── dvc.yaml                         # DVC multi-stage pipeline definition
+├── simulate_traffic.py              # Production inference traffic simulator
+├── airflow_execute.md               # Airflow execution and reference guide
+├── monitoring_steps.md              # Prometheus, Grafana & Drift execution guide
+├── params.yaml                      # Centralized pipeline hyperparameters
+├── requirements.txt                 # Project dependencies
+└── README.md                        # Complete project documentation
 ```
