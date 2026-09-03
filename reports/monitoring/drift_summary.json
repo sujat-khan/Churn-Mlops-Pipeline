@@ -1,0 +1,328 @@
+{
+    "summary": {
+        "timestamp": "2026-09-03T05:38:48.620268",
+        "all_passed": false,
+        "drift_detected": true
+    },
+    "feature_audit": {
+        "sample_size": 40,
+        "total_features": 34,
+        "drifted_features": 1,
+        "drift_share": 0.0294,
+        "all_passed": true,
+        "details": {
+            "Age": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.7825,
+                "ks_statistic": 0.1015,
+                "psi": 0.1057,
+                "wasserstein_norm": 0.1379,
+                "drift_detected": false
+            },
+            "BusinessTravel": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0355,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "DailyRate": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.8823,
+                "ks_statistic": 0.0903,
+                "psi": 0.1031,
+                "wasserstein_norm": 0.1216,
+                "drift_detected": false
+            },
+            "Department": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0085,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "DistanceFromHome": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.7467,
+                "ks_statistic": 0.1051,
+                "psi": 0.2344,
+                "wasserstein_norm": 0.1041,
+                "drift_detected": false
+            },
+            "Education": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9998,
+                "ks_statistic": 0.052,
+                "psi": 0.0476,
+                "wasserstein_norm": 0.1419,
+                "drift_detected": false
+            },
+            "EducationField": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.4053,
+                "wasserstein_norm": "N/A",
+                "drift_detected": true
+            },
+            "EmployeeCount": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 1.0,
+                "ks_statistic": 0.0,
+                "psi": 0.0001,
+                "wasserstein_norm": 0.0,
+                "drift_detected": false
+            },
+            "EmployeeNumber": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.7645,
+                "ks_statistic": 0.1034,
+                "psi": 0.3759,
+                "wasserstein_norm": 0.1261,
+                "drift_detected": false
+            },
+            "EnvironmentSatisfaction": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.0668,
+                "ks_statistic": 0.2051,
+                "psi": 0.1832,
+                "wasserstein_norm": 0.3429,
+                "drift_detected": false
+            },
+            "Gender": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0033,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "HourlyRate": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.0698,
+                "ks_statistic": 0.2037,
+                "psi": 0.2366,
+                "wasserstein_norm": 0.2404,
+                "drift_detected": false
+            },
+            "JobInvolvement": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.2828,
+                "ks_statistic": 0.1547,
+                "psi": 0.002,
+                "wasserstein_norm": 0.2533,
+                "drift_detected": false
+            },
+            "JobLevel": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9915,
+                "ks_statistic": 0.0662,
+                "psi": 0.0634,
+                "wasserstein_norm": 0.1178,
+                "drift_detected": false
+            },
+            "JobRole": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0329,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "JobSatisfaction": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.4651,
+                "ks_statistic": 0.1326,
+                "psi": 0.0941,
+                "wasserstein_norm": 0.2722,
+                "drift_detected": false
+            },
+            "MaritalStatus": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.1174,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "MonthlyIncome": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.5322,
+                "ks_statistic": 0.1258,
+                "psi": 0.2672,
+                "wasserstein_norm": 0.1467,
+                "drift_detected": false
+            },
+            "MonthlyRate": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.7389,
+                "ks_statistic": 0.1059,
+                "psi": 0.355,
+                "wasserstein_norm": 0.1665,
+                "drift_detected": false
+            },
+            "NumCompaniesWorked": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9883,
+                "ks_statistic": 0.0681,
+                "psi": 0.0757,
+                "wasserstein_norm": 0.0896,
+                "drift_detected": false
+            },
+            "Over18": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "OverTime": {
+                "type": "categorical",
+                "test": "Population Stability Index (PSI)",
+                "p_value": "N/A",
+                "ks_statistic": "N/A",
+                "psi": 0.0462,
+                "wasserstein_norm": "N/A",
+                "drift_detected": false
+            },
+            "PercentSalaryHike": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9983,
+                "ks_statistic": 0.0585,
+                "psi": 0.1217,
+                "wasserstein_norm": 0.1012,
+                "drift_detected": false
+            },
+            "PerformanceRating": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 1.0,
+                "ks_statistic": 0.0302,
+                "psi": 0.0076,
+                "wasserstein_norm": 0.0833,
+                "drift_detected": false
+            },
+            "RelationshipSatisfaction": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.0676,
+                "ks_statistic": 0.2047,
+                "psi": 0.2148,
+                "wasserstein_norm": 0.3759,
+                "drift_detected": false
+            },
+            "StandardHours": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 1.0,
+                "ks_statistic": 0.0,
+                "psi": 0.0001,
+                "wasserstein_norm": 0.0,
+                "drift_detected": false
+            },
+            "StockOptionLevel": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 1.0,
+                "ks_statistic": 0.0344,
+                "psi": 0.0065,
+                "wasserstein_norm": 0.08,
+                "drift_detected": false
+            },
+            "TotalWorkingYears": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9918,
+                "ks_statistic": 0.066,
+                "psi": 0.0586,
+                "wasserstein_norm": 0.1036,
+                "drift_detected": false
+            },
+            "TrainingTimesLastYear": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9166,
+                "ks_statistic": 0.0855,
+                "psi": 0.1228,
+                "wasserstein_norm": 0.1659,
+                "drift_detected": false
+            },
+            "WorkLifeBalance": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9775,
+                "ks_statistic": 0.0726,
+                "psi": 0.0309,
+                "wasserstein_norm": 0.1864,
+                "drift_detected": false
+            },
+            "YearsAtCompany": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.9999,
+                "ks_statistic": 0.0506,
+                "psi": 0.3431,
+                "wasserstein_norm": 0.0924,
+                "drift_detected": false
+            },
+            "YearsInCurrentRole": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 1.0,
+                "ks_statistic": 0.0327,
+                "psi": 0.1099,
+                "wasserstein_norm": 0.0805,
+                "drift_detected": false
+            },
+            "YearsSinceLastPromotion": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.778,
+                "ks_statistic": 0.102,
+                "psi": 0.0499,
+                "wasserstein_norm": 0.1622,
+                "drift_detected": false
+            },
+            "YearsWithCurrManager": {
+                "type": "numeric",
+                "test": "Kolmogorov-Smirnov (KS)",
+                "p_value": 0.5076,
+                "ks_statistic": 0.1282,
+                "psi": 0.1645,
+                "wasserstein_norm": 0.2778,
+                "drift_detected": false
+            }
+        }
+    },
+    "prediction_drift": {
+        "baseline_churn_rate": 0.1715,
+        "production_churn_rate": 0.0,
+        "divergence": 0.1715,
+        "drift_detected": true
+    }
+}

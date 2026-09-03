@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'fastapi-churn-api'
+    metrics_path: '/metrics'
+    static_configs:
+      # host.docker.internal allows Prometheus inside Docker to scrape your host API
+      - targets: ['host.docker.internal:8000']

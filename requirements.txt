@@ -20,6 +20,9 @@ fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
 
+# Monitoring & Observability
+prometheus-fastapi-instrumentator>=7.0.0
+
 # Testing & Quality Assurance
 pytest>=7.4.0
 httpx>=0.25.0
