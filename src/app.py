@@ -1,56 +1,68 @@
 import os
 import pickle
 import pandas as pd
+from datetime import datetime
 from typing import Dict, Any, List, Union
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(title="Employee Churn Prediction API")
 
-# 1. Load model and scaler directly on startup
+# 1. Prometheus Metrics: Instruments app and exposes /metrics
+Instrumentator().instrument(app).expose(app)
+
+# 2. Path for storing production inference logs
+LOG_DIR = "data/monitoring"
+LOG_FILE = os.path.join(LOG_DIR, "production_inferences.csv")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# 3. Load model and scaler
 with open("models/model.pkl", "rb") as f:
     model = pickle.load(f)
 
 with open("models/scaler.pkl", "rb") as f:
     scaler = pickle.load(f)
 
-# Get reference feature columns for alignment
 ref_df = pd.read_csv("data/processed/train_features.csv", nrows=1)
 FEATURE_COLUMNS = [c for c in ref_df.columns if c != "Attrition"]
 
 
 def transform_data(df: pd.DataFrame):
-    """Simple feature transform & alignment."""
-    # Create Domain interaction features
     df['TenurePerAge'] = df['YearsAtCompany'] / (df['Age'] + 1e-5)
     df['YearsInRoleRatio'] = df['YearsInCurrentRole'] / (df['YearsAtCompany'] + 1e-5)
     df['YearsWithManagerRatio'] = df['YearsWithCurrManager'] / (df['YearsAtCompany'] + 1e-5)
     df['IncomePerWorkingYear'] = df['MonthlyIncome'] / (df['TotalWorkingYears'] + 1e-5)
     df['PromotionTenureRatio'] = df['YearsSinceLastPromotion'] / (df['YearsAtCompany'] + 1e-5)
 
-    # Encode & Align columns
     encoded_df = pd.get_dummies(df)
     aligned_df = encoded_df.reindex(columns=FEATURE_COLUMNS, fill_value=0)
-    
-    # Scale
     return scaler.transform(aligned_df)
 
 
 @app.get("/")
 def home():
-    return {"status": "online", "message": "Churn Prediction API is running. Go to /docs to test"}
+    return {"status": "online", "message": "Churn Prediction API running. Metrics available at /metrics"}
 
 
 @app.post("/predict")
 def predict(data: Union[Dict[str, Any], List[Dict[str, Any]]]):
-    """Accepts any single JSON object or a list of JSON objects without declaring schemas!"""
     try:
-        # Convert incoming JSON directly into a pandas DataFrame
-        df = pd.DataFrame([data] if isinstance(data, dict) else data)
+        raw_records = [data] if isinstance(data, dict) else data
+        df = pd.DataFrame(raw_records)
 
-        # Preprocess & Predict
-        X = transform_data(df)
+        # Generate predictions
+        X = transform_data(df.copy())
         predictions = model.predict(X).tolist()
         probabilities = model.predict_proba(X)[:, 1].round(4).tolist()
+
+        # Log inference payload for drift auditing
+        log_df = df.copy()
+        log_df["prediction"] = predictions
+        log_df["probability"] = probabilities
+        log_df["timestamp"] = datetime.utcnow().isoformat()
+
+        file_exists = os.path.exists(LOG_FILE)
+        log_df.to_csv(LOG_FILE, mode='a', header=not file_exists, index=False)
 
         return {
             "predictions": predictions,
