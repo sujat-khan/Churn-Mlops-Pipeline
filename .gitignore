@@ -110,3 +110,6 @@ desktop.ini
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+#Extras
+hub_readme.md
